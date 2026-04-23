@@ -131,7 +131,7 @@ select {
   flex: 0 0 auto;
 }
 
-.demo-list__item:not(:first-child) {
+.demo-list__item {
   padding-bottom: 14px;
 }
 
