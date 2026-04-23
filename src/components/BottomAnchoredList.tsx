@@ -21,6 +21,15 @@ type ItemAnchor = {
 
 type Anchor = EndAnchor | ItemAnchor;
 
+export type BottomAnchoredListPosition = {
+  anchoredToEnd: boolean;
+  renderedLowerIndex: number;
+  tailIndex: number;
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+};
+
 /**
  * Renders `items[renderedLowerIndex..tailIndex]` and restores either the tail
  * anchor or the visually lowest visible item after layout changes.
@@ -32,6 +41,7 @@ export interface BottomAnchoredListProps<T> {
   initialRenderedCount?: number;
   revealBatchSize?: number;
   aboveViewportBufferPx?: number;
+  onPositionChange?: (position: BottomAnchoredListPosition) => void;
   className?: string;
   contentClassName?: string;
   itemClassName?: string;
@@ -61,6 +71,17 @@ const contentBaseStyle: CSSProperties = {
 const itemBaseStyle: CSSProperties = {
   flex: '0 0 auto',
 };
+
+const arePositionsEqual = (
+  previous: BottomAnchoredListPosition,
+  next: BottomAnchoredListPosition,
+): boolean =>
+  previous.anchoredToEnd === next.anchoredToEnd &&
+  previous.renderedLowerIndex === next.renderedLowerIndex &&
+  previous.tailIndex === next.tailIndex &&
+  previous.scrollTop === next.scrollTop &&
+  previous.scrollHeight === next.scrollHeight &&
+  previous.clientHeight === next.clientHeight;
 
 const easeOutCubic = (progress: number): number => 1 - (1 - progress) ** 3;
 
@@ -115,6 +136,7 @@ export function BottomAnchoredList<T>({
   initialRenderedCount = 24,
   revealBatchSize = initialRenderedCount,
   aboveViewportBufferPx = 240,
+  onPositionChange,
   className,
   contentClassName,
   itemClassName,
@@ -123,6 +145,8 @@ export function BottomAnchoredList<T>({
   const [renderedLowerIndex, setRenderedLowerIndex] = useState(() =>
     getInitialRenderedLowerIndex(items.length, initialRenderedCount),
   );
+
+  const tailIndex = items.length - 1;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -136,15 +160,61 @@ export function BottomAnchoredList<T>({
   const renderedLowerIndexRef = useRef(renderedLowerIndex);
   const isRestoringRef = useRef(false);
   const isAnimatingToEndRef = useRef(false);
+  const tailIndexRef = useRef(tailIndex);
+  const onPositionChangeRef = useRef(onPositionChange);
+  const positionAnimationFrameRef = useRef<number | null>(null);
+  const lastPublishedPositionRef =
+    useRef<BottomAnchoredListPosition | null>(null);
 
   renderedLowerIndexRef.current = renderedLowerIndex;
-
-  const tailIndex = items.length - 1;
+  tailIndexRef.current = tailIndex;
+  onPositionChangeRef.current = onPositionChange;
 
   const getViewportRect = (): DOMRect | null => {
     const viewportElement = viewportRef.current;
 
     return viewportElement?.getBoundingClientRect() ?? null;
+  };
+
+  const publishPositionChange = (): void => {
+    const viewportElement = viewportRef.current;
+    const handlePositionChange = onPositionChangeRef.current;
+
+    if (!viewportElement || !handlePositionChange) {
+      return;
+    }
+
+    const nextPosition: BottomAnchoredListPosition = {
+      anchoredToEnd: anchorRef.current.mode === 'end',
+      renderedLowerIndex: renderedLowerIndexRef.current,
+      tailIndex: tailIndexRef.current,
+      scrollTop: viewportElement.scrollTop,
+      scrollHeight: viewportElement.scrollHeight,
+      clientHeight: viewportElement.clientHeight,
+    };
+    const previousPosition = lastPublishedPositionRef.current;
+
+    if (previousPosition && arePositionsEqual(previousPosition, nextPosition)) {
+      return;
+    }
+
+    lastPublishedPositionRef.current = nextPosition;
+    handlePositionChange(nextPosition);
+  };
+
+  const schedulePositionChange = (): void => {
+    if (!onPositionChangeRef.current) {
+      return;
+    }
+
+    if (positionAnimationFrameRef.current !== null) {
+      return;
+    }
+
+    positionAnimationFrameRef.current = window.requestAnimationFrame(() => {
+      positionAnimationFrameRef.current = null;
+      publishPositionChange();
+    });
   };
 
   const cancelAnimatedEndRestore = (): void => {
@@ -269,6 +339,7 @@ export function BottomAnchoredList<T>({
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       restoreAnchor();
       anchorRef.current = captureAnchor();
+      schedulePositionChange();
       return;
     }
 
@@ -284,6 +355,7 @@ export function BottomAnchoredList<T>({
 
     if (Math.abs(deltaPx) <= EPSILON_PX) {
       anchorRef.current = captureAnchor();
+      schedulePositionChange();
       return;
     }
 
@@ -314,6 +386,7 @@ export function BottomAnchoredList<T>({
       viewportElement.scrollTop =
         startScrollTop + (targetScrollTop - startScrollTop) * easedProgress;
       isRestoringRef.current = false;
+      publishPositionChange();
 
       if (progress < 1) {
         animatedEndRestoreFrameRef.current = window.requestAnimationFrame(step);
@@ -323,6 +396,7 @@ export function BottomAnchoredList<T>({
       animatedEndRestoreFrameRef.current = null;
       isAnimatingToEndRef.current = false;
       anchorRef.current = captureAnchor();
+      publishPositionChange();
     };
 
     animatedEndRestoreFrameRef.current = window.requestAnimationFrame(step);
@@ -341,6 +415,7 @@ export function BottomAnchoredList<T>({
       restoreAnimationFrameRef.current = null;
       restoreAnchor();
       anchorRef.current = captureAnchor();
+      schedulePositionChange();
     });
   };
 
@@ -386,6 +461,7 @@ export function BottomAnchoredList<T>({
     }
 
     revealOlderItemsIfNeeded();
+    schedulePositionChange();
   };
 
   useLayoutEffect(() => {
@@ -422,6 +498,7 @@ export function BottomAnchoredList<T>({
     restoreAnchor();
     anchorRef.current = captureAnchor();
     revealOlderItemsIfNeeded();
+    schedulePositionChange();
   });
 
   useEffect(() => {
@@ -466,6 +543,10 @@ export function BottomAnchoredList<T>({
   useEffect(() => () => {
     if (restoreAnimationFrameRef.current !== null) {
       window.cancelAnimationFrame(restoreAnimationFrameRef.current);
+    }
+
+    if (positionAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(positionAnimationFrameRef.current);
     }
 
     cancelAnimatedEndRestore();

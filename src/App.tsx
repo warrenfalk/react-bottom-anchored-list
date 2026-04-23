@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BottomAnchoredList } from './index';
+import { BottomAnchoredList, type BottomAnchoredListPosition } from './index';
 
 type DemoMessage = {
   id: string;
@@ -36,6 +36,7 @@ export default function App() {
   const [nextNewerSequence, setNextNewerSequence] = useState(
     INITIAL_NEWER_SEQUENCE,
   );
+  const [anchoredToEnd, setAnchoredToEnd] = useState(true);
 
   const prependOlder = () => {
     const olderCount = 8;
@@ -71,6 +72,10 @@ export default function App() {
     );
   };
 
+  const handlePositionChange = (position: BottomAnchoredListPosition) => {
+    setAnchoredToEnd(position.anchoredToEnd);
+  };
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -93,6 +98,9 @@ export default function App() {
             Mutate 1 existing row
           </button>
         </div>
+        <p className="position-status">
+          Scroll position: {anchoredToEnd ? 'anchored to tail' : 'away from tail'}
+        </p>
       </section>
 
       <section className="demo-panel">
@@ -102,6 +110,7 @@ export default function App() {
           initialRenderedCount={18}
           revealBatchSize={12}
           aboveViewportBufferPx={320}
+          onPositionChange={handlePositionChange}
           className="demo-list"
           itemClassName="demo-list__item"
           renderItem={(message) => (
