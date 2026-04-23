@@ -39,9 +39,38 @@ export interface BottomAnchoredListProps<T> {
 }
 
 const EPSILON_PX = 0.5;
+const MIN_END_APPEND_ANIMATION_MS = 140;
+const MAX_END_APPEND_ANIMATION_MS = 280;
 
 const joinClassNames = (...values: Array<string | undefined>): string =>
   values.filter(Boolean).join(' ');
+
+const easeOutCubic = (progress: number): number => 1 - (1 - progress) ** 3;
+
+const didAppendNewerItems = <T,>(
+  previousItems: readonly T[],
+  nextItems: readonly T[],
+  getItemKey?: (item: T, index: number) => Key,
+): boolean => {
+  if (previousItems.length === 0 || nextItems.length <= previousItems.length) {
+    return false;
+  }
+
+  for (let index = 0; index < previousItems.length; index += 1) {
+    const previousIdentity = getItemKey
+      ? getItemKey(previousItems[index], index)
+      : previousItems[index];
+    const nextIdentity = getItemKey
+      ? getItemKey(nextItems[index], index)
+      : nextItems[index];
+
+    if (previousIdentity !== nextIdentity) {
+      return false;
+    }
+  }
+
+  return true;
+};
 
 const clampRenderedLowerIndex = (value: number, itemCount: number): number => {
   if (itemCount <= 0) {
@@ -83,9 +112,13 @@ export function BottomAnchoredList<T>({
   const itemElementsRef = useRef(new Map<number, HTMLDivElement>());
   const anchorRef = useRef<Anchor>({ mode: 'end' });
   const previousItemCountRef = useRef(items.length);
+  const previousItemsRef = useRef(items);
+  const pendingAnimatedEndRestoreRef = useRef(false);
   const restoreAnimationFrameRef = useRef<number | null>(null);
+  const animatedEndRestoreFrameRef = useRef<number | null>(null);
   const renderedLowerIndexRef = useRef(renderedLowerIndex);
   const isRestoringRef = useRef(false);
+  const isAnimatingToEndRef = useRef(false);
 
   renderedLowerIndexRef.current = renderedLowerIndex;
 
@@ -95,6 +128,15 @@ export function BottomAnchoredList<T>({
     const viewportElement = viewportRef.current;
 
     return viewportElement?.getBoundingClientRect() ?? null;
+  };
+
+  const cancelAnimatedEndRestore = (): void => {
+    if (animatedEndRestoreFrameRef.current !== null) {
+      window.cancelAnimationFrame(animatedEndRestoreFrameRef.current);
+      animatedEndRestoreFrameRef.current = null;
+    }
+
+    isAnimatingToEndRef.current = false;
   };
 
   const captureAnchor = (): Anchor => {
@@ -200,7 +242,80 @@ export function BottomAnchoredList<T>({
     isRestoringRef.current = false;
   };
 
+  const animateEndRestore = (): void => {
+    const viewportElement = viewportRef.current;
+
+    if (!viewportElement || tailIndex < 0) {
+      return;
+    }
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      restoreAnchor();
+      anchorRef.current = captureAnchor();
+      return;
+    }
+
+    const viewportRect = getViewportRect();
+    const tailElement = itemElementsRef.current.get(tailIndex);
+
+    if (!viewportRect || !tailElement) {
+      return;
+    }
+
+    const tailRect = tailElement.getBoundingClientRect();
+    const deltaPx = tailRect.bottom - viewportRect.bottom;
+
+    if (Math.abs(deltaPx) <= EPSILON_PX) {
+      anchorRef.current = captureAnchor();
+      return;
+    }
+
+    cancelAnimatedEndRestore();
+
+    const startScrollTop = viewportElement.scrollTop;
+    const targetScrollTop = startScrollTop + deltaPx;
+    const durationMs = Math.max(
+      MIN_END_APPEND_ANIMATION_MS,
+      Math.min(MAX_END_APPEND_ANIMATION_MS, Math.abs(deltaPx) * 0.6),
+    );
+
+    anchorRef.current = { mode: 'end' };
+    isAnimatingToEndRef.current = true;
+
+    let animationStartTime: number | null = null;
+
+    const step = (timestamp: number): void => {
+      if (animationStartTime === null) {
+        animationStartTime = timestamp;
+      }
+
+      const elapsedMs = timestamp - animationStartTime;
+      const progress = Math.min(1, elapsedMs / durationMs);
+      const easedProgress = easeOutCubic(progress);
+
+      isRestoringRef.current = true;
+      viewportElement.scrollTop =
+        startScrollTop + (targetScrollTop - startScrollTop) * easedProgress;
+      isRestoringRef.current = false;
+
+      if (progress < 1) {
+        animatedEndRestoreFrameRef.current = window.requestAnimationFrame(step);
+        return;
+      }
+
+      animatedEndRestoreFrameRef.current = null;
+      isAnimatingToEndRef.current = false;
+      anchorRef.current = captureAnchor();
+    };
+
+    animatedEndRestoreFrameRef.current = window.requestAnimationFrame(step);
+  };
+
   const scheduleAnchorRestore = (): void => {
+    if (isAnimatingToEndRef.current) {
+      return;
+    }
+
     if (restoreAnimationFrameRef.current !== null) {
       return;
     }
@@ -241,7 +356,7 @@ export function BottomAnchoredList<T>({
   };
 
   const handleScroll = (): void => {
-    if (isRestoringRef.current) {
+    if (isRestoringRef.current || isAnimatingToEndRef.current) {
       return;
     }
 
@@ -255,6 +370,13 @@ export function BottomAnchoredList<T>({
 
     revealOlderItemsIfNeeded();
   };
+
+  useLayoutEffect(() => {
+    pendingAnimatedEndRestoreRef.current =
+      anchorRef.current.mode === 'end' &&
+      didAppendNewerItems(previousItemsRef.current, items, getItemKey);
+    previousItemsRef.current = items;
+  }, [getItemKey, items]);
 
   useLayoutEffect(() => {
     const previousItemCount = previousItemCountRef.current;
@@ -274,10 +396,25 @@ export function BottomAnchoredList<T>({
   }, [initialRenderedCount, items.length]);
 
   useLayoutEffect(() => {
+    if (pendingAnimatedEndRestoreRef.current) {
+      revealOlderItemsIfNeeded();
+      return;
+    }
+
+    cancelAnimatedEndRestore();
     restoreAnchor();
     anchorRef.current = captureAnchor();
     revealOlderItemsIfNeeded();
   });
+
+  useEffect(() => {
+    if (!pendingAnimatedEndRestoreRef.current) {
+      return;
+    }
+
+    pendingAnimatedEndRestoreRef.current = false;
+    animateEndRestore();
+  }, [items]);
 
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') {
@@ -313,6 +450,8 @@ export function BottomAnchoredList<T>({
     if (restoreAnimationFrameRef.current !== null) {
       window.cancelAnimationFrame(restoreAnimationFrameRef.current);
     }
+
+    cancelAnimatedEndRestore();
   }, []);
 
   const renderedItems = items
