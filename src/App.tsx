@@ -1,5 +1,9 @@
-import { useState } from 'react';
-import { BottomAnchoredList, type BottomAnchoredListPosition } from './index';
+import { useRef, useState } from 'react';
+import {
+  BottomAnchoredList,
+  type BottomAnchoredListHandle,
+  type BottomAnchoredListPosition,
+} from './index';
 
 type DemoMessage = {
   id: string;
@@ -27,6 +31,7 @@ const INITIAL_COUNT = 80;
 const INITIAL_NEWER_SEQUENCE = INITIAL_OLDER_SEQUENCE + INITIAL_COUNT;
 
 export default function App() {
+  const listRef = useRef<BottomAnchoredListHandle>(null);
   const [messages, setMessages] = useState<DemoMessage[]>(() =>
     buildMessageRange(INITIAL_OLDER_SEQUENCE, INITIAL_COUNT),
   );
@@ -76,6 +81,10 @@ export default function App() {
     setAnchoredToEnd(position.anchoredToEnd);
   };
 
+  const scrollToTail = () => {
+    listRef.current?.scrollToEnd({ behavior: 'smooth' });
+  };
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -97,6 +106,9 @@ export default function App() {
           <button type="button" onClick={mutateExistingRow}>
             Mutate 1 existing row
           </button>
+          <button type="button" onClick={scrollToTail}>
+            Scroll to tail
+          </button>
         </div>
         <p className="position-status">
           Scroll position: {anchoredToEnd ? 'anchored to tail' : 'away from tail'}
@@ -105,6 +117,7 @@ export default function App() {
 
       <section className="demo-panel">
         <BottomAnchoredList
+          ref={listRef}
           items={messages}
           getItemKey={(message) => message.id}
           initialRenderedCount={18}

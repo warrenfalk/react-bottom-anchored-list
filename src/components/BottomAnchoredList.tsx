@@ -1,8 +1,13 @@
 import {
   type CSSProperties,
+  type ForwardedRef,
   type Key,
+  type ReactElement,
   type ReactNode,
+  type RefAttributes,
+  forwardRef,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
@@ -28,6 +33,10 @@ export type BottomAnchoredListPosition = {
   scrollTop: number;
   scrollHeight: number;
   clientHeight: number;
+};
+
+export type BottomAnchoredListHandle = {
+  scrollToEnd: (options?: { behavior?: ScrollBehavior }) => void;
 };
 
 /**
@@ -129,7 +138,12 @@ const getInitialRenderedLowerIndex = (
   return itemCount - initialRenderedCount;
 };
 
-export function BottomAnchoredList<T>({
+type BottomAnchoredListComponent = <T>(
+  props: BottomAnchoredListProps<T> & RefAttributes<BottomAnchoredListHandle>,
+) => ReactElement | null;
+
+const BottomAnchoredListInner = <T,>(
+{
   items,
   renderItem,
   getItemKey,
@@ -141,7 +155,9 @@ export function BottomAnchoredList<T>({
   contentClassName,
   itemClassName,
   style,
-}: BottomAnchoredListProps<T>) {
+}: BottomAnchoredListProps<T>,
+ref: ForwardedRef<BottomAnchoredListHandle>,
+) => {
   const [renderedLowerIndex, setRenderedLowerIndex] = useState(() =>
     getInitialRenderedLowerIndex(items.length, initialRenderedCount),
   );
@@ -215,6 +231,13 @@ export function BottomAnchoredList<T>({
       positionAnimationFrameRef.current = null;
       publishPositionChange();
     });
+  };
+
+  const cancelScheduledAnchorRestore = (): void => {
+    if (restoreAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(restoreAnimationFrameRef.current);
+      restoreAnimationFrameRef.current = null;
+    }
   };
 
   const cancelAnimatedEndRestore = (): void => {
@@ -402,6 +425,32 @@ export function BottomAnchoredList<T>({
     animatedEndRestoreFrameRef.current = window.requestAnimationFrame(step);
   };
 
+  const scrollToEnd = (
+    options: { behavior?: ScrollBehavior } = {},
+  ): void => {
+    if (tailIndex < 0) {
+      return;
+    }
+
+    pendingAnimatedEndRestoreRef.current = false;
+    cancelScheduledAnchorRestore();
+    cancelAnimatedEndRestore();
+    anchorRef.current = { mode: 'end' };
+
+    if (options.behavior === 'smooth') {
+      animateEndRestore();
+      return;
+    }
+
+    restoreAnchor();
+    anchorRef.current = captureAnchor();
+    schedulePositionChange();
+  };
+
+  useImperativeHandle(ref, () => ({
+    scrollToEnd,
+  }));
+
   const scheduleAnchorRestore = (): void => {
     if (isAnimatingToEndRef.current) {
       return;
@@ -541,9 +590,7 @@ export function BottomAnchoredList<T>({
   }, [items, renderedLowerIndex]);
 
   useEffect(() => () => {
-    if (restoreAnimationFrameRef.current !== null) {
-      window.cancelAnimationFrame(restoreAnimationFrameRef.current);
-    }
+    cancelScheduledAnchorRestore();
 
     if (positionAnimationFrameRef.current !== null) {
       window.cancelAnimationFrame(positionAnimationFrameRef.current);
@@ -593,4 +640,11 @@ export function BottomAnchoredList<T>({
       </div>
     </div>
   );
-}
+};
+
+const BottomAnchoredListWithRef = forwardRef(BottomAnchoredListInner);
+
+BottomAnchoredListWithRef.displayName = 'BottomAnchoredList';
+
+export const BottomAnchoredList =
+  BottomAnchoredListWithRef as BottomAnchoredListComponent;

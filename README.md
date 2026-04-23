@@ -92,6 +92,48 @@ The callback receives:
 Position notifications are coalesced to animation frames, and unchanged
 snapshots are not emitted repeatedly.
 
+## Imperative Control
+
+Use a ref when the owning component needs to command the list to return to the
+tail.
+
+```tsx
+import { useRef } from 'react';
+import {
+  BottomAnchoredList,
+  type BottomAnchoredListHandle,
+} from 'react-bottom-anchored-list';
+
+export function Messages({ messages }: { messages: Message[] }) {
+  const listRef = useRef<BottomAnchoredListHandle>(null);
+
+  const scrollToTail = () => {
+    listRef.current?.scrollToEnd({ behavior: 'smooth' });
+  };
+
+  return (
+    <>
+      <button type="button" onClick={scrollToTail}>
+        Jump to newest
+      </button>
+      <BottomAnchoredList
+        ref={listRef}
+        items={messages}
+        getItemKey={(message) => message.id}
+        renderItem={(message) => <article>{message.body}</article>}
+      />
+    </>
+  );
+}
+```
+
+The imperative handle currently exposes:
+
+| Method | Description |
+| --- | --- |
+| `scrollToEnd()` | Immediately restores the end anchor. |
+| `scrollToEnd({ behavior: 'smooth' })` | Smoothly animates back to the end anchor. |
+
 ## Behavior Model
 
 - The source array runs from older items at lower indexes to newer items at
