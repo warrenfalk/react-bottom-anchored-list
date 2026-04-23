@@ -181,6 +181,8 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
   const positionAnimationFrameRef = useRef<number | null>(null);
   const lastPublishedPositionRef =
     useRef<BottomAnchoredListPosition | null>(null);
+  const viewportClientHeightRef = useRef(0);
+  const viewportClientWidthRef = useRef(0);
 
   renderedLowerIndexRef.current = renderedLowerIndex;
   tailIndexRef.current = tailIndex;
@@ -190,6 +192,30 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     const viewportElement = viewportRef.current;
 
     return viewportElement?.getBoundingClientRect() ?? null;
+  };
+
+  const updateViewportSizeSnapshot = (): void => {
+    const viewportElement = viewportRef.current;
+
+    if (!viewportElement) {
+      return;
+    }
+
+    viewportClientHeightRef.current = viewportElement.clientHeight;
+    viewportClientWidthRef.current = viewportElement.clientWidth;
+  };
+
+  const didViewportSizeChange = (): boolean => {
+    const viewportElement = viewportRef.current;
+
+    if (!viewportElement) {
+      return false;
+    }
+
+    return (
+      viewportElement.clientHeight !== viewportClientHeightRef.current ||
+      viewportElement.clientWidth !== viewportClientWidthRef.current
+    );
   };
 
   const publishPositionChange = (): void => {
@@ -362,6 +388,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       restoreAnchor();
       anchorRef.current = captureAnchor();
+      updateViewportSizeSnapshot();
       schedulePositionChange();
       return;
     }
@@ -378,6 +405,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
 
     if (Math.abs(deltaPx) <= EPSILON_PX) {
       anchorRef.current = captureAnchor();
+      updateViewportSizeSnapshot();
       schedulePositionChange();
       return;
     }
@@ -419,6 +447,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
       animatedEndRestoreFrameRef.current = null;
       isAnimatingToEndRef.current = false;
       anchorRef.current = captureAnchor();
+      updateViewportSizeSnapshot();
       publishPositionChange();
     };
 
@@ -444,6 +473,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
 
     restoreAnchor();
     anchorRef.current = captureAnchor();
+    updateViewportSizeSnapshot();
     schedulePositionChange();
   };
 
@@ -464,6 +494,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
       restoreAnimationFrameRef.current = null;
       restoreAnchor();
       anchorRef.current = captureAnchor();
+      updateViewportSizeSnapshot();
       schedulePositionChange();
     });
   };
@@ -498,6 +529,15 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
 
   const handleScroll = (): void => {
     if (isRestoringRef.current || isAnimatingToEndRef.current) {
+      return;
+    }
+
+    if (didViewportSizeChange()) {
+      restoreAnchor();
+      anchorRef.current = captureAnchor();
+      updateViewportSizeSnapshot();
+      revealOlderItemsIfNeeded();
+      schedulePositionChange();
       return;
     }
 
@@ -546,6 +586,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     cancelAnimatedEndRestore();
     restoreAnchor();
     anchorRef.current = captureAnchor();
+    updateViewportSizeSnapshot();
     revealOlderItemsIfNeeded();
     schedulePositionChange();
   });
