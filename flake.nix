@@ -39,14 +39,13 @@
             export npm_config_audit=false
 
             if [ ! -f package.json ]; then
-              cat <<'EOF'
-              React component workspace is ready.
-
-              Suggested bootstrap:
-                pnpm create vite . --template react-ts
-                pnpm install
-                pnpm dev
-              EOF
+              printf '%s\n' \
+                'React component workspace is ready.' \
+                "" \
+                'Suggested bootstrap:' \
+                '  pnpm create vite . --template react-ts' \
+                '  pnpm install' \
+                '  pnpm dev'
             fi
           '';
         };

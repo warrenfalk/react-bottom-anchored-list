@@ -1,13 +1,15 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src/main.tsx` bootstraps the Vite app. `src/App.tsx` is the demo harness for prepend, append, and layout-change checks. The core implementation lives in `src/components/BottomAnchoredList.tsx`. Shared styles live in `src/styles.css`. Root config lives in `package.json`, `tsconfig*.json`, and `vite.config.ts`. Do not commit `dist/` or `node_modules/`.
+`src/main.tsx` bootstraps the Vite demo app. `src/App.tsx` is the demo harness for prepend, append, and layout-change checks. `src/index.ts` is the package entrypoint. The core implementation lives in `src/components/BottomAnchoredList.tsx`. Shared demo styles live in `src/styles.css`. Root config lives in `package.json`, `tsconfig*.json`, and `vite.config.ts`. Do not commit `dist/`, `demo-dist/`, or `node_modules/`.
 
 ## Build, Test, and Development Commands
 - `pnpm install` installs dependencies.
 - `pnpm dev` starts the local Vite development server.
-- `pnpm build` runs `tsc -b` and creates a production bundle.
-- `pnpm preview` serves the latest build locally.
+- `pnpm build` builds the library package into `dist/` and the demo into `demo-dist/`.
+- `pnpm build:lib` builds ESM, CJS, and declarations from `src/index.ts`.
+- `pnpm build:demo` runs `tsc -b` and creates a Vite demo bundle.
+- `pnpm preview` serves the latest demo build locally.
 - `nix develop` is optional and provides the pinned Node.js and `pnpm` toolchain from `flake.nix`.
 
 Use `pnpm`, not `npm`.

@@ -114,23 +114,6 @@ select {
     0 28px 60px rgba(15, 23, 42, 0.12);
 }
 
-.bottom-anchored-list {
-  min-height: 0;
-  overflow-y: auto;
-  position: relative;
-  overflow-anchor: none;
-}
-
-.bottom-anchored-list__content {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column-reverse;
-}
-
-.bottom-anchored-list__item {
-  flex: 0 0 auto;
-}
-
 .demo-list__item {
   padding-bottom: 14px;
 }

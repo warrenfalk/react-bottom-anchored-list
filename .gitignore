@@ -1,6 +1,7 @@
 /.direnv/
 node_modules/
 dist/
+demo-dist/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts

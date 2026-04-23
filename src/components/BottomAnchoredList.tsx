@@ -45,6 +45,23 @@ const MAX_END_APPEND_ANIMATION_MS = 280;
 const joinClassNames = (...values: Array<string | undefined>): string =>
   values.filter(Boolean).join(' ');
 
+const viewportBaseStyle: CSSProperties = {
+  minHeight: 0,
+  overflowY: 'auto',
+  position: 'relative',
+  overflowAnchor: 'none',
+};
+
+const contentBaseStyle: CSSProperties = {
+  minHeight: '100%',
+  display: 'flex',
+  flexDirection: 'column-reverse',
+};
+
+const itemBaseStyle: CSSProperties = {
+  flex: '0 0 auto',
+};
+
 const easeOutCubic = (progress: number): number => 1 - (1 - progress) ** 3;
 
 const didAppendNewerItems = <T,>(
@@ -467,11 +484,12 @@ export function BottomAnchoredList<T>({
       ref={viewportRef}
       className={joinClassNames('bottom-anchored-list', className)}
       onScroll={handleScroll}
-      style={style}
+      style={{ ...viewportBaseStyle, ...style }}
     >
       <div
         ref={contentRef}
         className={joinClassNames('bottom-anchored-list__content', contentClassName)}
+        style={contentBaseStyle}
       >
         {renderedItems.map(({ item, index }) => (
           <div
@@ -486,6 +504,7 @@ export function BottomAnchoredList<T>({
             }}
             className={joinClassNames('bottom-anchored-list__item', itemClassName)}
             data-index={index}
+            style={itemBaseStyle}
           >
             {renderItem(item, index)}
           </div>

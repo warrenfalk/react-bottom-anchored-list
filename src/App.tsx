@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BottomAnchoredList } from './components/BottomAnchoredList';
+import { BottomAnchoredList } from './index';
 
 type DemoMessage = {
   id: string;
