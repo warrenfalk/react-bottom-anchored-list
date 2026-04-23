@@ -170,7 +170,11 @@ The imperative handle currently exposes:
 pnpm install
 pnpm dev
 pnpm build
+pnpm test:e2e
 ```
 
 `pnpm build` builds the library into `dist/` and the demo into `demo-dist/`.
 Both output directories are ignored by git.
+
+For browser tests, use `nix develop` so Playwright can pick up the Nix-managed
+browser bundle exposed by the shell.

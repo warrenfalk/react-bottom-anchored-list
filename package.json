@@ -21,12 +21,16 @@
     "build:lib": "tsup",
     "build:demo": "tsc -b && vite build --outDir demo-dist",
     "prepare": "tsup",
-    "preview": "vite preview --outDir demo-dist"
+    "preview": "vite preview --outDir demo-dist",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "peerDependencies": {
     "react": ">=18"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",

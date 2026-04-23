@@ -32,11 +32,15 @@
             jq
             nodejs_22
             pnpm
+            playwright-driver.browsers
           ];
 
           shellHook = ''
             export npm_config_fund=false
             export npm_config_audit=false
+            export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+            export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
 
             if [ ! -f package.json ]; then
               printf '%s\n' \

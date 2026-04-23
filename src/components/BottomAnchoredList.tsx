@@ -491,11 +491,15 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     }
 
     restoreAnimationFrameRef.current = window.requestAnimationFrame(() => {
-      restoreAnimationFrameRef.current = null;
       restoreAnchor();
-      anchorRef.current = captureAnchor();
-      updateViewportSizeSnapshot();
-      schedulePositionChange();
+
+      restoreAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        restoreAnimationFrameRef.current = null;
+        restoreAnchor();
+        anchorRef.current = captureAnchor();
+        updateViewportSizeSnapshot();
+        schedulePositionChange();
+      });
     });
   };
 
@@ -533,11 +537,6 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     }
 
     if (didViewportSizeChange()) {
-      restoreAnchor();
-      anchorRef.current = captureAnchor();
-      updateViewportSizeSnapshot();
-      revealOlderItemsIfNeeded();
-      schedulePositionChange();
       return;
     }
 
