@@ -95,7 +95,7 @@ snapshots are not emitted repeatedly.
 ## Imperative Control
 
 Use a ref when the owning component needs to command the list to return to the
-tail.
+tail or jump to a specific item.
 
 ```tsx
 import { useRef } from 'react';
@@ -111,10 +111,17 @@ export function Messages({ messages }: { messages: Message[] }) {
     listRef.current?.scrollToEnd({ behavior: 'smooth' });
   };
 
+  const scrollToMiddleMessage = () => {
+    listRef.current?.scrollToItem(Math.floor(messages.length / 2));
+  };
+
   return (
     <>
       <button type="button" onClick={scrollToTail}>
         Jump to newest
+      </button>
+      <button type="button" onClick={scrollToMiddleMessage}>
+        Jump to middle message
       </button>
       <BottomAnchoredList
         ref={listRef}
@@ -133,6 +140,7 @@ The imperative handle currently exposes:
 | --- | --- |
 | `scrollToEnd()` | Immediately restores the end anchor. |
 | `scrollToEnd({ behavior: 'smooth' })` | Smoothly animates back to the end anchor. |
+| `scrollToItem(index)` | Makes the indexed item the bottom anchor with `bottomOffsetPx = 0`. If needed, expands the rendered window first so the item exists in the DOM. |
 
 ## Behavior Model
 

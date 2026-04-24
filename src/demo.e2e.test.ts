@@ -2,7 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 const listSelector = '.demo-list';
 const listItemSelector = '.demo-list__item';
+const middleIndex = 40;
 const tailIndex = 79;
+const visibilityEpsilonPx = 0.5;
 
 const getPositionStatusText = async (page: Page): Promise<string> =>
   (await page.locator('.position-status').textContent()) ?? '';
@@ -27,7 +29,7 @@ const readTailBottomOffset = async (page: Page): Promise<number> =>
 const readBottomAnchor = async (
   page: Page,
 ): Promise<{ index: number; bottomOffset: number }> =>
-  page.locator(listSelector).evaluate((viewport) => {
+  page.locator(listSelector).evaluate((viewport, epsilonPx) => {
     const viewportRect = viewport.getBoundingClientRect();
     const visibleItems = Array.from(
       viewport.querySelectorAll<HTMLElement>('.demo-list__item'),
@@ -35,7 +37,8 @@ const readBottomAnchor = async (
       .map((item) => {
         const rect = item.getBoundingClientRect();
         const isVisible =
-          rect.top < viewportRect.bottom && rect.bottom > viewportRect.top;
+          rect.top < viewportRect.bottom - epsilonPx &&
+          rect.bottom > viewportRect.top + epsilonPx;
 
         if (!isVisible) {
           return null;
@@ -59,7 +62,7 @@ const readBottomAnchor = async (
       index: bottomAnchor.index,
       bottomOffset: bottomAnchor.bottomOffset,
     };
-  });
+  }, visibilityEpsilonPx);
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -87,6 +90,22 @@ test('scrolling away from the tail updates status and the demo button returns to
     .toContain('anchored to tail');
   await expect
     .poll(() => readTailBottomOffset(page).then((offset) => Math.abs(offset)))
+    .toBeLessThan(2);
+});
+
+test('scroll to middle row makes that item the bottom anchor', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'Scroll to middle row' }).click();
+
+  await expect
+    .poll(() => getPositionStatusText(page))
+    .toContain('away from tail');
+  await expect
+    .poll(async () => (await readBottomAnchor(page)).index)
+    .toBe(middleIndex);
+  await expect
+    .poll(async () => Math.abs((await readBottomAnchor(page)).bottomOffset))
     .toBeLessThan(2);
 });
 

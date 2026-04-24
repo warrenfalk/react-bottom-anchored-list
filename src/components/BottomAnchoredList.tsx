@@ -37,6 +37,7 @@ export type BottomAnchoredListPosition = {
 
 export type BottomAnchoredListHandle = {
   scrollToEnd: (options?: { behavior?: ScrollBehavior }) => void;
+  scrollToItem: (index: number) => void;
 };
 
 /**
@@ -80,6 +81,13 @@ const contentBaseStyle: CSSProperties = {
 const itemBaseStyle: CSSProperties = {
   flex: '0 0 auto',
 };
+
+const isRectVisibleInViewport = (
+  rect: DOMRect,
+  viewportRect: DOMRect,
+): boolean =>
+  rect.top < viewportRect.bottom - EPSILON_PX &&
+  rect.bottom > viewportRect.top + EPSILON_PX;
 
 const arePositionsEqual = (
   previous: BottomAnchoredListPosition,
@@ -138,6 +146,14 @@ const getInitialRenderedLowerIndex = (
   return itemCount - initialRenderedCount;
 };
 
+const clampItemIndex = (value: number, itemCount: number): number => {
+  if (itemCount <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(Math.trunc(value), itemCount - 1));
+};
+
 type BottomAnchoredListComponent = <T>(
   props: BottomAnchoredListProps<T> & RefAttributes<BottomAnchoredListHandle>,
 ) => ReactElement | null;
@@ -192,6 +208,25 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     const viewportElement = viewportRef.current;
 
     return viewportElement?.getBoundingClientRect() ?? null;
+  };
+
+  const getAnchorItemKey = (index: number): Key =>
+    getItemKey ? getItemKey(items[index], index) : index;
+
+  const canItemReachViewportBottom = (index: number): boolean => {
+    const viewportElement = viewportRef.current;
+    const contentElement = contentRef.current;
+    const targetElement = itemElementsRef.current.get(index);
+
+    if (!viewportElement || !contentElement || !targetElement) {
+      return false;
+    }
+
+    const contentRect = contentElement.getBoundingClientRect();
+    const targetRect = targetElement.getBoundingClientRect();
+    const renderedContentAboveTargetPx = targetRect.bottom - contentRect.top;
+
+    return renderedContentAboveTargetPx >= viewportElement.clientHeight - EPSILON_PX;
   };
 
   const updateViewportSizeSnapshot = (): void => {
@@ -308,17 +343,15 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
       }
 
       const itemRect = itemElement.getBoundingClientRect();
-      const isVisibleInViewport =
-        itemRect.top < viewportRect.bottom && itemRect.bottom > viewportRect.top;
 
-      if (!isVisibleInViewport) {
+      if (!isRectVisibleInViewport(itemRect, viewportRect)) {
         continue;
       }
 
       return {
         mode: 'item',
         index,
-        itemKey: getItemKey ? getItemKey(items[index], index) : index,
+        itemKey: getAnchorItemKey(index),
         bottomOffsetPx: Math.max(0, itemRect.bottom - viewportRect.bottom),
       };
     }
@@ -477,8 +510,40 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     schedulePositionChange();
   };
 
+  const scrollToItem = (index: number): void => {
+    if (tailIndex < 0) {
+      return;
+    }
+
+    const targetIndex = clampItemIndex(index, items.length);
+
+    pendingAnimatedEndRestoreRef.current = false;
+    cancelScheduledAnchorRestore();
+    cancelAnimatedEndRestore();
+    anchorRef.current = {
+      mode: 'item',
+      index: targetIndex,
+      itemKey: getAnchorItemKey(targetIndex),
+      bottomOffsetPx: 0,
+    };
+
+    if (
+      targetIndex < renderedLowerIndexRef.current ||
+      !canItemReachViewportBottom(targetIndex)
+    ) {
+      setRenderedLowerIndex(0);
+      return;
+    }
+
+    restoreAnchor();
+    anchorRef.current = captureAnchor();
+    updateViewportSizeSnapshot();
+    schedulePositionChange();
+  };
+
   useImperativeHandle(ref, () => ({
     scrollToEnd,
+    scrollToItem,
   }));
 
   const scheduleAnchorRestore = (): void => {

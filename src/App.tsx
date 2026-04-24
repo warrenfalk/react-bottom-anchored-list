@@ -85,6 +85,10 @@ export default function App() {
     listRef.current?.scrollToEnd({ behavior: 'smooth' });
   };
 
+  const scrollToMiddleRow = () => {
+    listRef.current?.scrollToItem(Math.floor(messages.length / 2));
+  };
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -108,6 +112,9 @@ export default function App() {
           </button>
           <button type="button" onClick={scrollToTail}>
             Scroll to tail
+          </button>
+          <button type="button" onClick={scrollToMiddleRow}>
+            Scroll to middle row
           </button>
         </div>
         <p className="position-status">
