@@ -96,7 +96,7 @@ test('scrolling away from the tail updates status and the demo button returns to
 test('scroll to middle row makes that item the bottom anchor', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: 'Scroll to middle row' }).click();
+  await page.getByRole('button', { name: /^Scroll to Row \d+$/ }).click();
 
   await expect
     .poll(() => getPositionStatusText(page))

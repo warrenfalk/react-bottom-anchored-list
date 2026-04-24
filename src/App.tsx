@@ -42,6 +42,8 @@ export default function App() {
     INITIAL_NEWER_SEQUENCE,
   );
   const [anchoredToEnd, setAnchoredToEnd] = useState(true);
+  const middleIndex = Math.floor(messages.length / 2);
+  const middleMessage = messages[middleIndex];
 
   const prependOlder = () => {
     const olderCount = 8;
@@ -86,7 +88,7 @@ export default function App() {
   };
 
   const scrollToMiddleRow = () => {
-    listRef.current?.scrollToItem(Math.floor(messages.length / 2));
+    listRef.current?.scrollToItem(middleIndex);
   };
 
   return (
@@ -114,7 +116,7 @@ export default function App() {
             Scroll to tail
           </button>
           <button type="button" onClick={scrollToMiddleRow}>
-            Scroll to middle row
+            {middleMessage ? `Scroll to ${middleMessage.label}` : 'Scroll to middle row'}
           </button>
         </div>
         <p className="position-status">
