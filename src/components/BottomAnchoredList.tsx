@@ -89,6 +89,14 @@ const isRectVisibleInViewport = (
   rect.top < viewportRect.bottom - EPSILON_PX &&
   rect.bottom > viewportRect.top + EPSILON_PX;
 
+const readPaddingBottomPx = (element: HTMLElement): number => {
+  const paddingBottom = Number.parseFloat(
+    window.getComputedStyle(element).paddingBottom,
+  );
+
+  return Number.isFinite(paddingBottom) ? paddingBottom : 0;
+};
+
 const arePositionsEqual = (
   previous: BottomAnchoredListPosition,
   next: BottomAnchoredListPosition,
@@ -325,8 +333,9 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
 
     if (tailElement) {
       const tailRect = tailElement.getBoundingClientRect();
+      const tailSnapThresholdPx = readPaddingBottomPx(tailElement);
 
-      if (tailRect.bottom <= viewportRect.bottom + EPSILON_PX) {
+      if (tailRect.bottom <= viewportRect.bottom + tailSnapThresholdPx) {
         return { mode: 'end' };
       }
     }
@@ -608,7 +617,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
     anchorRef.current = captureAnchor();
 
     if (anchorRef.current.mode === 'end') {
-      // When the tail becomes visible below, snap it flush to the viewport bottom.
+      // When the viewport reaches the tail padding, snap it flush to the bottom.
       restoreAnchor();
       anchorRef.current = captureAnchor();
     }

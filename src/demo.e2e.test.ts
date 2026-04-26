@@ -39,6 +39,37 @@ const readTailBottomOffset = async (page: Page): Promise<number> =>
     tailIndex,
   });
 
+const placeTailInsideBottomPadding = async (page: Page): Promise<number> =>
+  page.locator(listSelector).evaluate((viewport, params) => {
+    const viewportRect = viewport.getBoundingClientRect();
+    const tailItem = viewport.querySelector<HTMLElement>(
+      `${params.itemSelector}[data-index="${params.tailIndex}"]`,
+    );
+
+    if (!tailItem) {
+      throw new Error(`Missing tail item at index ${params.tailIndex}`);
+    }
+
+    const paddingBottom = Number.parseFloat(
+      window.getComputedStyle(tailItem).paddingBottom,
+    );
+
+    if (!Number.isFinite(paddingBottom) || paddingBottom <= 2) {
+      throw new Error('Tail item needs enough bottom padding for this check');
+    }
+
+    const tailRect = tailItem.getBoundingClientRect();
+    const targetOffset = paddingBottom / 2;
+
+    viewport.scrollTop += tailRect.bottom - viewportRect.bottom - targetOffset;
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }));
+
+    return targetOffset;
+  }, {
+    itemSelector: listItemSelector,
+    tailIndex,
+  });
+
 const readBottomAnchor = async (
   page: Page,
 ): Promise<{ index: number; bottomOffset: number }> =>
@@ -97,6 +128,20 @@ test('scrolling away from the tail updates status and the demo button returns to
     .toContain('away from tail');
 
   await page.getByRole('button', { name: 'Scroll to tail' }).click();
+
+  await expect
+    .poll(() => getPositionStatusText(page))
+    .toContain('anchored to tail');
+  await expect
+    .poll(() => readTailBottomOffset(page).then((offset) => Math.abs(offset)))
+    .toBeLessThan(2);
+});
+
+test('entering tail padding snaps back to the end', async ({ page }) => {
+  await expect(page.locator('.position-status')).toContainText('anchored to tail');
+
+  const targetOffset = await placeTailInsideBottomPadding(page);
+  expect(targetOffset).toBeGreaterThan(visibilityEpsilonPx);
 
   await expect
     .poll(() => getPositionStatusText(page))
