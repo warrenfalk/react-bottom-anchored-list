@@ -98,6 +98,35 @@ select {
   background: #9a3412;
 }
 
+.height-control {
+  min-width: min(400px, 100%);
+  border-radius: 999px;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) 5ch;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #334155;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.height-control span {
+  white-space: nowrap;
+}
+
+.height-control input {
+  width: 100%;
+  accent-color: #0f172a;
+}
+
+.height-control output {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .position-status {
   margin: 14px 0 0;
   font-size: 0.95rem;
@@ -108,6 +137,8 @@ select {
 .demo-panel {
   min-height: 0;
   display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .demo-list {
@@ -124,6 +155,30 @@ select {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.65),
     0 28px 60px rgba(15, 23, 42, 0.12);
+}
+
+.demo-lower-block {
+  flex: 0 0 auto;
+  min-height: 0;
+  border-radius: 22px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(15, 23, 42, 0.78);
+  color: #f8fafc;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+}
+
+.demo-lower-block span {
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.demo-lower-block strong {
+  font-size: 1.1rem;
 }
 
 .demo-list__item {
@@ -164,6 +219,11 @@ select {
   .demo-list {
     padding: 14px;
     border-radius: 22px;
+  }
+
+  .height-control {
+    grid-template-columns: 1fr;
+    border-radius: 18px;
   }
 
   .message-card {

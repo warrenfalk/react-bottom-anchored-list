@@ -9,6 +9,19 @@ const visibilityEpsilonPx = 0.5;
 const getPositionStatusText = async (page: Page): Promise<string> =>
   (await page.locator('.position-status').textContent()) ?? '';
 
+const readListClientHeight = async (page: Page): Promise<number> =>
+  page.locator(listSelector).evaluate((viewport) => viewport.clientHeight);
+
+const setLowerBlockHeight = async (
+  page: Page,
+  height: number,
+): Promise<void> => {
+  const slider = page.getByRole('slider', { name: /Lower block height/ });
+
+  await slider.fill(String(height));
+  await expect(slider).toHaveValue(String(height));
+};
+
 const readTailBottomOffset = async (page: Page): Promise<number> =>
   page.locator(listSelector).evaluate((viewport, params) => {
     const viewportRect = viewport.getBoundingClientRect();
@@ -122,6 +135,29 @@ test('shrinking the viewport while anchored to the end keeps the tail flush to t
     height: 700,
   });
 
+  await expect
+    .poll(() => getPositionStatusText(page))
+    .toContain('anchored to tail');
+  await expect
+    .poll(() => readTailBottomOffset(page).then((offset) => Math.abs(offset)))
+    .toBeLessThan(2);
+});
+
+test('growing the lower flex block keeps the tail flush to the list bottom edge', async ({
+  page,
+}) => {
+  await expect(page.locator('.position-status')).toContainText('anchored to tail');
+  await expect
+    .poll(() => readTailBottomOffset(page).then((offset) => Math.abs(offset)))
+    .toBeLessThan(2);
+
+  const initialListHeight = await readListClientHeight(page);
+
+  await setLowerBlockHeight(page, 240);
+
+  await expect
+    .poll(() => readListClientHeight(page))
+    .toBeLessThan(initialListHeight);
   await expect
     .poll(() => getPositionStatusText(page))
     .toContain('anchored to tail');

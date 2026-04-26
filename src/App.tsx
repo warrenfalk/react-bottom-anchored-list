@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import {
   BottomAnchoredList,
   type BottomAnchoredListHandle,
@@ -29,6 +29,9 @@ const buildMessageRange = (firstSequence: number, count: number): DemoMessage[] 
 const INITIAL_OLDER_SEQUENCE = 101;
 const INITIAL_COUNT = 80;
 const INITIAL_NEWER_SEQUENCE = INITIAL_OLDER_SEQUENCE + INITIAL_COUNT;
+const MIN_LOWER_BLOCK_HEIGHT = 48;
+const MAX_LOWER_BLOCK_HEIGHT = 240;
+const LOWER_BLOCK_HEIGHT_STEP = 24;
 
 export default function App() {
   const listRef = useRef<BottomAnchoredListHandle>(null);
@@ -42,6 +45,7 @@ export default function App() {
     INITIAL_NEWER_SEQUENCE,
   );
   const [anchoredToEnd, setAnchoredToEnd] = useState(true);
+  const [lowerBlockHeight, setLowerBlockHeight] = useState(96);
   const middleIndex = Math.floor(messages.length / 2);
   const middleMessage = messages[middleIndex];
 
@@ -91,6 +95,12 @@ export default function App() {
     listRef.current?.scrollToItem(middleIndex);
   };
 
+  const handleLowerBlockHeightChange = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    setLowerBlockHeight(Number(event.currentTarget.value));
+  };
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -118,6 +128,19 @@ export default function App() {
           <button type="button" onClick={scrollToMiddleRow}>
             {middleMessage ? `Scroll to ${middleMessage.label}` : 'Scroll to middle row'}
           </button>
+          <label className="height-control">
+            <span>Lower block height</span>
+            <input
+              type="range"
+              min={MIN_LOWER_BLOCK_HEIGHT}
+              max={MAX_LOWER_BLOCK_HEIGHT}
+              step={LOWER_BLOCK_HEIGHT_STEP}
+              value={lowerBlockHeight}
+              onChange={handleLowerBlockHeightChange}
+              aria-describedby="lower-block-height-value"
+            />
+            <output id="lower-block-height-value">{lowerBlockHeight}px</output>
+          </label>
         </div>
         <p className="position-status">
           Scroll position: {anchoredToEnd ? 'anchored to tail' : 'away from tail'}
@@ -142,6 +165,13 @@ export default function App() {
             </article>
           )}
         />
+        <div
+          className="demo-lower-block"
+          style={{ height: lowerBlockHeight }}
+        >
+          <span>Lower block</span>
+          <strong>{lowerBlockHeight}px</strong>
+        </div>
       </section>
     </main>
   );
