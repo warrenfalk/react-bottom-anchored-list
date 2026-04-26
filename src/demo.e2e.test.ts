@@ -5,6 +5,7 @@ const listItemSelector = '.demo-list__item';
 const middleIndex = 40;
 const tailIndex = 79;
 const visibilityEpsilonPx = 0.5;
+const defaultTailSnapThresholdPx = 3;
 
 const getPositionStatusText = async (page: Page): Promise<string> =>
   (await page.locator('.position-status').textContent()) ?? '';
@@ -66,6 +67,34 @@ const placeTailInsideBottomPadding = async (page: Page): Promise<number> =>
 
     return targetOffset;
   }, {
+    itemSelector: listItemSelector,
+    tailIndex,
+  });
+
+const placeTailInsideNoPaddingThreshold = async (
+  page: Page,
+): Promise<number> =>
+  page.locator(listSelector).evaluate((viewport, params) => {
+    const viewportRect = viewport.getBoundingClientRect();
+    const tailItem = viewport.querySelector<HTMLElement>(
+      `${params.itemSelector}[data-index="${params.tailIndex}"]`,
+    );
+
+    if (!tailItem) {
+      throw new Error(`Missing tail item at index ${params.tailIndex}`);
+    }
+
+    tailItem.style.paddingBottom = '0px';
+
+    const tailRect = tailItem.getBoundingClientRect();
+    const targetOffset = params.defaultThresholdPx / 2;
+
+    viewport.scrollTop += tailRect.bottom - viewportRect.bottom - targetOffset;
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }));
+
+    return targetOffset;
+  }, {
+    defaultThresholdPx: defaultTailSnapThresholdPx,
     itemSelector: listItemSelector,
     tailIndex,
   });
@@ -141,6 +170,20 @@ test('entering tail padding snaps back to the end', async ({ page }) => {
   await expect(page.locator('.position-status')).toContainText('anchored to tail');
 
   const targetOffset = await placeTailInsideBottomPadding(page);
+  expect(targetOffset).toBeGreaterThan(visibilityEpsilonPx);
+
+  await expect
+    .poll(() => getPositionStatusText(page))
+    .toContain('anchored to tail');
+  await expect
+    .poll(() => readTailBottomOffset(page).then((offset) => Math.abs(offset)))
+    .toBeLessThan(2);
+});
+
+test('zero tail padding still has a small snap threshold', async ({ page }) => {
+  await expect(page.locator('.position-status')).toContainText('anchored to tail');
+
+  const targetOffset = await placeTailInsideNoPaddingThreshold(page);
   expect(targetOffset).toBeGreaterThan(visibilityEpsilonPx);
 
   await expect

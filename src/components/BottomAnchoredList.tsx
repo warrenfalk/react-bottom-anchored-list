@@ -59,6 +59,7 @@ export interface BottomAnchoredListProps<T> {
 }
 
 const EPSILON_PX = 0.5;
+const DEFAULT_TAIL_SNAP_THRESHOLD_PX = 3;
 const MIN_END_APPEND_ANIMATION_MS = 140;
 const MAX_END_APPEND_ANIMATION_MS = 280;
 
@@ -89,12 +90,16 @@ const isRectVisibleInViewport = (
   rect.top < viewportRect.bottom - EPSILON_PX &&
   rect.bottom > viewportRect.top + EPSILON_PX;
 
-const readPaddingBottomPx = (element: HTMLElement): number => {
+const readTailSnapThresholdPx = (element: HTMLElement): number => {
   const paddingBottom = Number.parseFloat(
     window.getComputedStyle(element).paddingBottom,
   );
 
-  return Number.isFinite(paddingBottom) ? paddingBottom : 0;
+  if (Number.isFinite(paddingBottom) && paddingBottom > 0) {
+    return paddingBottom;
+  }
+
+  return DEFAULT_TAIL_SNAP_THRESHOLD_PX;
 };
 
 const arePositionsEqual = (
@@ -333,7 +338,7 @@ ref: ForwardedRef<BottomAnchoredListHandle>,
 
     if (tailElement) {
       const tailRect = tailElement.getBoundingClientRect();
-      const tailSnapThresholdPx = readPaddingBottomPx(tailElement);
+      const tailSnapThresholdPx = readTailSnapThresholdPx(tailElement);
 
       if (tailRect.bottom <= viewportRect.bottom + tailSnapThresholdPx) {
         return { mode: 'end' };
